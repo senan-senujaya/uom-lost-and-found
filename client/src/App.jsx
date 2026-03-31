@@ -26,7 +26,7 @@ function App() {
   useEffect(() => {
     const fetchItems = async () => {
       try {
-        const response = await axios.get('http://localhost:5001/api/items');
+        const response = await axios.get('https://find-it-uom.onrender.com/api/items');
         setItems(response.data);
       } catch (error) {
         console.error('Error fetching items:', error);
@@ -41,7 +41,7 @@ function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:5001/api/items', formData);
+      const res = await axios.post('https://find-it-uom.onrender.com/api/items', formData);
       setItems([res.data, ...items]); 
       setIsModalOpen(false); 
       setFormData({ title: '', description: '', type: 'Lost', category: 'ID Card', location: '', reporterName: '', reporterEmail: '', imageUrl: '' }); 
@@ -79,7 +79,7 @@ function App() {
 
     try {
       // Send the token to the backend
-      await axios.delete(`http://localhost:5001/api/items/${id}`, {
+      await axios.delete(`https://find-it-uom.onrender.com/api/items/${id}`, {
         data: { token: userToken.toUpperCase() } 
       });
       
