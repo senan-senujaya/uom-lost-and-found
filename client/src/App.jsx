@@ -42,24 +42,54 @@ function App() {
     e.preventDefault();
     try {
       const res = await axios.post('http://localhost:5001/api/items', formData);
-      setItems([res.data, ...items]); // Instantly add the new item to the screen!
-      setIsModalOpen(false); // Close the modal
-      // Reset the form
+      setItems([res.data, ...items]); 
+      setIsModalOpen(false); 
       setFormData({ title: '', description: '', type: 'Lost', category: 'ID Card', location: '', reporterName: '', reporterEmail: '', imageUrl: '' }); 
+      
+      // NEW: Show the user their token!
+      alert(`🎉 Item Reported Successfully!\n\n⚠️ IMPORTANT: Your secret token is: ${res.data.secretToken}\n\nWrite this down! You will need it to click 'Resolve' and remove this post once the item is recovered.`);
+      
     } catch (error) {
       console.error('Error submitting item:', error);
       alert('Failed to report item.');
     }
   };
 
+  // --- TIME AGO CALCULATOR ---
+  const getTimeAgo = (mongoId) => {
+    // Extract the timestamp from the MongoDB ID
+    const timestamp = parseInt(mongoId.substring(0, 8), 16) * 1000;
+    const seconds = Math.floor((new Date() - timestamp) / 1000);
+    
+    let interval = seconds / 86400;
+    if (interval >= 1) return Math.floor(interval) + "d ago";
+    interval = seconds / 3600;
+    if (interval >= 1) return Math.floor(interval) + "h ago";
+    interval = seconds / 60;
+    if (interval >= 1) return Math.floor(interval) + "m ago";
+    return "Just now";
+  };
+
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure this item is resolved? It will be removed.')) {
-      try {
-        await axios.delete(`http://localhost:5001/api/items/${id}`);
-        setItems(items.filter(item => item._id !== id));
-      } catch (error) {
-        console.error('Error deleting item:', error);
-      }
+    // Prompt the user for their token OR the admin password
+    const userToken = window.prompt('🔒 Enter your Secret Token (or Admin Password) to resolve this item:');
+    
+    // If they click 'Cancel' or leave it blank, stop the function
+    if (!userToken) return; 
+
+    try {
+      // Send the token to the backend
+      await axios.delete(`http://localhost:5001/api/items/${id}`, {
+        data: { token: userToken.toUpperCase() } 
+      });
+      
+      // FIX: Use prevItems to safely and instantly remove the card from the UI
+      setItems(prevItems => prevItems.filter(item => item._id !== id));
+      
+      alert('✅ Item successfully resolved and removed from the network!');
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      alert(error.response?.data?.message || 'Failed to delete the item. Wrong token?');
     }
   };
 
@@ -156,10 +186,16 @@ function App() {
                     onError={(e) => { e.target.src = 'https://placehold.co/600x400/1e293b/94a3b8?text=Invalid+Link'; }}
                   />
                   <div className="flex justify-between items-start mb-3">
-                    <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full ${item.type === 'Lost' ? 'text-pink-400 bg-pink-400/10 border border-pink-400/20' : 'text-cyan-400 bg-cyan-400/10 border border-cyan-400/20'}`}>
-                      {item.type}
+                    <div className="flex items-center gap-2">
+                      <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full ${item.type === 'Lost' ? 'text-pink-400 bg-pink-400/10 border border-pink-400/20' : 'text-cyan-400 bg-cyan-400/10 border border-cyan-400/20'}`}>
+                        {item.type}
+                      </span>
+                      <span className="text-slate-400 text-sm font-semibold">{item.category}</span>
+                    </div>
+                    {/* NEW: The Time Ago Display */}
+                    <span className="text-slate-500 text-xs font-medium">
+                      {getTimeAgo(item._id)}
                     </span>
-                    <span className="text-slate-400 text-sm font-semibold">{item.category}</span>
                   </div>
                   <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>
                   <p className="text-slate-300 text-sm mb-2"><strong className="text-slate-500">Location:</strong> {item.location}</p>
